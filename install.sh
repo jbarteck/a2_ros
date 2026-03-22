@@ -17,7 +17,7 @@ ask_yn() {
 }
 
 SCRIPT_DIR=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
-MUJOCO_VERSION="3.3.6"
+MUJOCO_VERSION="3.5.0"
 MUJOCO_DIR="$HOME/.mujoco/mujoco-${MUJOCO_VERSION}"
 
 echo "=== a2_ros install ==="
