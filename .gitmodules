@@ -31,3 +31,6 @@
 [submodule "external/HesaiLidar"]
 	path = external/HesaiLidar
 	url = git@github.com:ETHZ-RobotX/HesaiLidar_ROS_2.0.git
+[submodule "src/object_detection"]
+	path = src/object_detection
+	url = git@github.com:ETHZ-RobotX/a2_object_detection.git
