@@ -3,8 +3,10 @@ Full A2 real-robot launch.
 
 Starts:
   - a2_unitree_bridge  : bridge node (publishes /joint_states and /imu/data from hardware)
+  - hesai_ros_driver   : Hesai LiDAR driver (front lidar by default)
   - joy_node           : reads gamepad from /dev/input/js0
   - teleop_joy         : maps gamepad axes/buttons to /cmd_vel and /mode
+  - gscam2             : H.264 multicast camera stream
 
 Always on:
   - robot_state_publisher : broadcasts fixed TF links from URDF
@@ -15,6 +17,7 @@ Optional (pass rviz:=true):
 Usage:
   ros2 launch a2_ros real.launch.py
   ros2 launch a2_ros real.launch.py rviz:=true
+  ros2 launch a2_ros real.launch.py lidar_config:=config_rear.yaml
 """
 
 import os
@@ -31,11 +34,19 @@ from launch_ros.parameter_descriptions import ParameterValue
 def generate_launch_description():
     description_dir = get_package_share_directory('a2_description')
     bridge_launch_dir = get_package_share_directory('a2_unitree_bridge')
+    a2_ros_launch_dir = os.path.join(get_package_share_directory('a2_ros'), 'launch')
+    hesai_launch_dir = os.path.join(get_package_share_directory('hesai_ros_driver'), 'launch')
 
     rviz_arg = DeclareLaunchArgument(
         'rviz',
         default_value='false',
         description='Launch RViz2 visualisation'
+    )
+
+    lidar_config_arg = DeclareLaunchArgument(
+        'lidar_config',
+        default_value='config_front.yaml',
+        description='Hesai config filename (relative to hesai_ros_driver/config/)'
     )
 
     urdf_path = os.path.join(description_dir, 'urdf', 'a2.urdf')
@@ -47,25 +58,23 @@ def generate_launch_description():
         )
     )
 
-    joy_node = Node(
-        package='joy',
-        executable='joy_node',
-        name='joy_node',
-        parameters=[{
-            'dev': '/dev/input/js0',
-            'deadzone': 0.05,
-            'autorepeat_rate': 500.0,
-        }]
+    teleop_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(a2_ros_launch_dir, 'teleop_joy.launch.py')
+        )
     )
 
-    teleop_node = Node(
-        package='a2_ros',
-        executable='teleop_joy',
-        output='screen',
-        parameters=[{
-            'linear_speed_limit': 0.5,
-            'angular_speed_limit': 1.0,
-        }]
+    camera_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(a2_ros_launch_dir, 'camera.launch.py')
+        )
+    )
+
+    lidar_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(hesai_launch_dir, 'start_launch.py')
+        ),
+        launch_arguments={'config_file': LaunchConfiguration('lidar_config')}.items()
     )
 
     robot_state_pub_node = Node(
@@ -112,9 +121,11 @@ def generate_launch_description():
 
     return LaunchDescription([
         rviz_arg,
+        lidar_config_arg,
         bridge_launch,
-        # joy_node,
-        # teleop_node,
+        teleop_launch,
+        camera_launch,
+        lidar_launch,
         robot_state_pub_node,
         # front_imu_tf_node,
         # rear_imu_tf_node,
